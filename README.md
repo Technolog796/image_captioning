@@ -9,4 +9,4 @@
     1. <code>load_data</code> - загрузка изображений из url'ов датасета Wiki и скачивание COCO-2014
     2. <code>wikitext_normalization</code> - нормализация и предобработка caption'ов Wiki датасета и подсчет CLIP score его и COCO.
 
-В папке <code>telegram bot</code> приведен весь код, связанный с телеграм-ботом. Он использует скрипт <code>inference_clip_gpt2_coco</code> для работы с моделью.
+В папке <code>telegram bot</code> приведен весь код, связанный с телеграм-ботом. Он использует скрипт <code>inference_clip_gpt2_coco</code> в качестве основы для работы с моделью.
