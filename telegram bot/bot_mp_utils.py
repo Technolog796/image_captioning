@@ -10,6 +10,7 @@ import clip
 
 gpt_model_name = 'sberbank-ai/rugpt3medium_based_on_gpt2'
 
+
 class MLP(nn.Module):
     def __init__(self, sizes: Tuple[int, ...], bias=True, act=nn.Tanh):
         super(MLP, self).__init__()
@@ -19,23 +20,22 @@ class MLP(nn.Module):
             if i < len(sizes) - 2:
                 layers.append(act())
         self.model = nn.Sequential(*layers)
-    
-    #@autocast()  
+
+    # @autocast()
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         return self.model(x)
 
-    
+
 def freeze(
-    model,
-    freeze_emb=False,
-    freeze_ln=False,
-    freeze_attn=True,
-    freeze_ff=True,
-    freeze_other=False,
+        model,
+        freeze_emb=False,
+        freeze_ln=False,
+        freeze_attn=True,
+        freeze_ff=True,
+        freeze_other=False,
 ):
-    
     for name, p in model.named_parameters():
-    # freeze all parameters except the layernorm and positional embeddings
+        # freeze all parameters except the layernorm and positional embeddings
         name = name.lower()
         if 'ln' in name or 'norm' in name:
             p.requires_grad = not freeze_ln
@@ -47,8 +47,9 @@ def freeze(
             p.requires_grad = not freeze_attn
         else:
             p.requires_grad = not freeze_other
-           
+
     return model
+
 
 class ClipCaptionModel(nn.Module):
     def __init__(self, prefix_length: int, prefix_size: int = 768):
@@ -62,16 +63,16 @@ class ClipCaptionModel(nn.Module):
 
         self.gpt_embedding_size = self.gpt.transformer.wte.weight.shape[1]
         self.clip_project = MLP((prefix_size, (self.gpt_embedding_size * prefix_length) // 2,
-                              self.gpt_embedding_size * prefix_length))
-        
+                                 self.gpt_embedding_size * prefix_length))
+
     def get_dummy_token(self, batch_size: int, device: torch.device) -> torch.Tensor:
         return torch.zeros(batch_size, self.prefix_length, dtype=torch.int64, device=device)
-    
-    #@autocast() 
+
+    # @autocast()
     def forward(self, tokens: torch.Tensor, prefix: torch.Tensor, mask: Optional[torch.Tensor] = None,
                 labels: Optional[torch.Tensor] = None):
         embedding_text = self.gpt.transformer.wte(tokens)
-        
+
         prefix_projections = self.clip_project(prefix.float()).view(-1, self.prefix_length, self.gpt_embedding_size)
 
         embedding_cat = torch.cat((prefix_projections, embedding_text), dim=1)
@@ -79,7 +80,7 @@ class ClipCaptionModel(nn.Module):
             dummy_token = self.get_dummy_token(tokens.shape[0], tokens.device)
             labels = torch.cat((dummy_token, tokens), dim=1)
         out = self.gpt(inputs_embeds=embedding_cat, labels=labels, attention_mask=mask)
-        
+
         return out
 
 
@@ -92,10 +93,12 @@ class ClipCaptionPrefix(ClipCaptionModel):
         self.gpt.eval()
         return self
 
+
 def filter_ngrams(output_text):
     a_pos = output_text.find(' Ответ:')
     sec_a_pos = output_text.find(' Ответ:', a_pos + 1)
     return output_text[:sec_a_pos]
+
 
 def generate2(
         model,
@@ -107,7 +110,7 @@ def generate2(
         entry_length=67,  # maximum number of words
         top_p=0.98,
         temperature=1.,
-        stop_token = '.',
+        stop_token='.',
 ):
     model.eval()
     generated_num = 0
@@ -120,16 +123,16 @@ def generate2(
         for entry_idx in range(entry_count):
             if not tokens:
                 tokens = torch.tensor(tokenizer.encode(prompt))
-                #print('tokens',tokens)
+                # print('tokens',tokens)
                 tokens = tokens.unsqueeze(0).to(device)
-                    
+
             emb_tokens = model.gpt.transformer.wte(tokens)
-            
+
             if embed is not None:
                 generated = torch.cat((embed, emb_tokens), dim=1)
             else:
                 generated = emb_tokens
-            
+
             for i in range(entry_length):
                 outputs = model.gpt(inputs_embeds=generated)
 
@@ -143,8 +146,8 @@ def generate2(
 
                 indices_to_remove = sorted_indices[sorted_indices_to_remove]
                 logits[:, indices_to_remove] = filter_value
-                
-                top_k = 2000 
+
+                top_k = 2000
                 top_p = 0.98
                 next_token = torch.argmax(logits, -1).unsqueeze(0)
                 next_token_embed = model.gpt.transformer.wte(next_token)
@@ -153,14 +156,14 @@ def generate2(
                 else:
                     tokens = torch.cat((tokens, next_token), dim=1)
                 generated = torch.cat((generated, next_token_embed), dim=1)
-               
+
                 if stop_token_index == next_token.item():
                     break
-                
+
                 decoder_inputs_embeds = next_token_embed
-            
+
             output_list = list(tokens.squeeze().cpu().numpy())
-            
+
             output_text = tokenizer.decode(output_list)
             output_text = filter_ngrams(output_text)
             generated_list.append(output_text)
@@ -170,11 +173,11 @@ def generate2(
 
 def read_image(path):
     image = cv2.imread(path)
-    
+
     size = 196, 196
     image = Image.fromarray(cv2.cvtColor(image, cv2.COLOR_BGR2RGB))
     image.thumbnail(size, Image.Resampling.LANCZOS)
-    
+
     return image
 
 
@@ -196,7 +199,7 @@ def get_caption(prefix, prompt=''):
             generated_text_prefix = generate2(model, tokenizer, prompt=prompt, embed=prefix_embed)
         else:
             generated_text_prefix = generate2(model, tokenizer, embed=prefix_embed)
-    return generated_text_prefix.replace('\n',' ')
+    return generated_text_prefix.replace('\n', ' ')
 
 
 def get_ans(clip_emb, prompt):
@@ -209,17 +212,19 @@ device = 'cuda:1'
 clip_model, preprocess = clip.load("ViT-L/14@336px", device=device, jit=False)
 tokenizer = GPT2Tokenizer.from_pretrained('sberbank-ai/rugpt3medium_based_on_gpt2')
 prefix_length = 30
-model_path = 'checkpoints/prefix_small_latest_gpt2_medium.pt'
+model_path = '../checkpoints/prefix_small_latest_gpt2_medium.pt'
 model = ClipCaptionPrefix(prefix_length)
-model.load_state_dict(torch.load(model_path, map_location='cpu')) 
+model.load_state_dict(torch.load(model_path, map_location='cpu'))
 model.to(device)
 model.eval()
 print("Model loaded.")
 
-input_image_path = "data/coco_dataset/val2014/COCO_val2014_000000008350.jpg"
 
-prefix, text = create_emb(input_image_path)
-print("Embedding generated.")
+def bot_inference(path_to_image):
+    prefix, text = create_emb(path_to_image)
+    ans = get_ans(prefix, text)
+    return ans
 
-ans = get_ans(prefix, text)
-print(ans)
+
+if __name__ == "main":
+    bot_inference("../data/tests/image.jpg")
