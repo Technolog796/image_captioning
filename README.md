@@ -10,3 +10,8 @@
     2. <code>wikitext_normalization</code> - нормализация и предобработка caption'ов Wiki датасета и подсчет CLIP score его и COCO.
 
 В папке <code>telegram bot</code> приведен весь код, связанный с телеграм-ботом. Он использует скрипт <code>inference_clip_gpt2_coco</code> в качестве основы для работы с моделью.
+
+# Демо
+Вы можете попробовать модель по следующим ссылкам:
+1. [Telegram](https://t.me/multimodal_image_bot)
+2. [HF Spaces](https://huggingface.co/spaces/Anonumous/RuImageCaptioning)
