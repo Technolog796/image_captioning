@@ -6,7 +6,7 @@ import cv2
 from PIL import Image
 from typing import Tuple, Optional, Union
 
-import clip
+import open_clip
 
 gpt_model_name = 'sberbank-ai/rugpt3medium_based_on_gpt2'
 
@@ -52,7 +52,7 @@ def freeze(
 
 
 class ClipCaptionModel(nn.Module):
-    def __init__(self, prefix_length: int, prefix_size: int = 768):
+    def __init__(self, prefix_length: int, prefix_size: int = 640):
         super(ClipCaptionModel, self).__init__()
         self.prefix_length = prefix_length
         """
@@ -187,7 +187,7 @@ def create_emb(path):
     image = preprocess(image).unsqueeze(0).to(device)
     with torch.no_grad():
         prefix = clip_model.encode_image(image).to(device, dtype=torch.float32)
-        prefix_embed = model.clip_project(prefix).reshape(1, prefix_length, -1)
+        # prefix_embed = model.clip_project(prefix).reshape(1, prefix_length, -1)
     return (prefix, text)
 
 
@@ -209,7 +209,9 @@ def get_ans(clip_emb, prompt):
 
 
 device = 'cuda:1'
-clip_model, preprocess = clip.load("ViT-L/14@336px", device=device, jit=False)
+clip_model, _, preprocess = open_clip.create_model_and_transforms('ViT-B-16-plus-240', pretrained="laion400m_e32")
+clip_model.to(device)
+print("CLIP loaded.")
 tokenizer = GPT2Tokenizer.from_pretrained('sberbank-ai/rugpt3medium_based_on_gpt2')
 prefix_length = 30
 model_path = '../checkpoints/prefix_small_latest_gpt2_medium.pt'
@@ -217,7 +219,7 @@ model = ClipCaptionPrefix(prefix_length)
 model.load_state_dict(torch.load(model_path, map_location='cpu'))
 model.to(device)
 model.eval()
-print("Model loaded.")
+print("Language model loaded.")
 
 
 def bot_inference(path_to_image):
