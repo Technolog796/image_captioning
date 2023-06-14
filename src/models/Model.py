@@ -7,12 +7,12 @@ from einops import rearrange
 
 import open_clip
 
-from transformers import  GPT2LMHeadModel, AutoTokenizer
+from transformers import GPT2LMHeadModel, AutoTokenizer
 
 from typing import Optional
 
-
 import math
+
 
 def exists(val):
     return val is not None
