@@ -14,6 +14,8 @@ import sys
 
 import matplotlib.pyplot as plt
 
+from src.config import Config
+
 
 def read_image(path, size=(256, 256)):
     image = cv2.imread(path)
