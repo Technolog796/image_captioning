@@ -1,73 +1,34 @@
 import torch
 import torch.nn as nn
-from torch.optim import AdamW
-from torch.utils.data import Dataset, DataLoader
-from torch.cuda.amp import autocast
-import math
-from einops import rearrange
-from torch import einsum
-from torch.optim import AdamW
-import random
-
+from torch.utils.data import DataLoader
 from torch.nn import functional as nnf
+from torch.optim.lr_scheduler import CosineAnnealingLR
 
 from tqdm.auto import tqdm
-from tqdm.contrib import tzip
 
-from transformers import GPT2Tokenizer, GPT2LMHeadModel
-from transformers import get_linear_schedule_with_warmup
-from transformers import BertTokenizer, BertModel, BertConfig, BertLMHeadModel, Blip2QFormerModel
-from transformers import AutoTokenizer
 import json
-import wandb
-import sys
-import cv2
-import torchvision.datasets as dset
-from PIL import Image
+
 import pickle
 import os
 
-from typing import Tuple, Optional, Union, Any
-from torch.cuda.amp import autocast
-from transformers.optimization import Adafactor, AdafactorSchedule
+from transformers.optimization import Adafactor
 import numpy as np
-import pandas as pd
-import open_clip
-from transformers import get_linear_schedule_with_warmup
-import matplotlib.pyplot as plt
 
 from torchmetrics import BLEUScore
 from evaluate import load
 from statistics import mean
-from torch.optim.lr_scheduler import CosineAnnealingLR
-
-import re
-import string
 
 from src.datasets.CocoDataset import CocoDataset
 from src.models.Model import ClipCaptionModel
+from src.utils.utils import truncate_sentences
 
 import wandb
-
-def truncate_sentences(sentences):
-    truncated_sentences = []
-    exclude = set(string.punctuation)
-    for sentence in sentences:
-        truncated_sentence = sentence
-        index = truncated_sentence.find("<pad>")
-        if index != -1:
-            truncated_sentence = truncated_sentence[:index]
-        truncated_sentence = ''.join(ch for ch in truncated_sentence if ch not in exclude)
-        index = truncated_sentence.find("бродить")
-        if index != -1:
-            truncated_sentence = truncated_sentence[index + 8:]
-        truncated_sentences.append(truncated_sentence)
-    return truncated_sentences
 
 bertscore = load("bertscore")
 meteor = load('meteor')
 rouge = load('rouge')
 bleu_scorers = [BLEUScore(n_gram=i) for i in [1, 2, 3]] + [bertscore, meteor, rouge]
+
 
 def train(model, optimizer, scheduler, loss_func, loader, epoch, args):
     model.train()
@@ -99,6 +60,7 @@ def train(model, optimizer, scheduler, loss_func, loader, epoch, args):
                                                 ["Что изображено на данной картинке?"])[0])
     with open(f'{args.save_path}checkpoint_{epoch}.pkl', 'wb') as f:
         pickle.dump(model, f)
+
 
 def evaluate(model, optimizer, scheduler, loss_func, loader, args):
     model.eval()
@@ -169,6 +131,7 @@ def evaluate(model, optimizer, scheduler, loss_func, loader, args):
         "rouge_score": np.mean([tensor for tensor in rg])
     })
 
+
 def fit_model(args):
     wandb.config = {
         "learning_rate": args.learning_rate,
@@ -217,7 +180,9 @@ def fit_model(args):
 
 
 class Config:
-    def __init__(self, encoder, decoder, batch_size, num_epochs, frozen_gpt, frozen_clip, learning_rate, save_path, prefix_length, only_prefix, prefix, device, save_every, warmup_steps, wandb_key, wandb_project, wandb_name):
+    def __init__(self, encoder, decoder, batch_size, num_epochs, frozen_gpt, frozen_clip, learning_rate, save_path,
+                 prefix_length, only_prefix, prefix, device, save_every, warmup_steps, wandb_key, wandb_project,
+                 wandb_name):
         self.encoder = encoder
         self.decoder = decoder
         self.batch_size = batch_size
@@ -235,16 +200,18 @@ class Config:
         self.wandb_key = wandb_key
         self.wandb_project = wandb_project
         self.wandb_name = wandb_name
-        
+
+
 if __name__ == "__main__":
     with open("config.json", "r") as file:
         config_json = json.loads(file.read())
         config = Config(**config_json)
-        
+
     train_dataset = CocoDataset(config, coef_size=0.5)
     val_dataset = CocoDataset(config, image_path="data/coco_dataset/val2014",
                               ann_path="data/coco_dataset/annotations/captions_val2014.json",
-                              caption_path="data/coco_dataset/coco_val_translation.jsonl", data_type='val', coef_size=0.05)
+                              caption_path="data/coco_dataset/coco_val_translation.jsonl", data_type='val',
+                              coef_size=0.05)
 
     wandb.login(relogin=True, key=config.wandb_key)
     wandb.init(project=config.wandb_project, sync_tensorboard=True, name=config.wandb_name)

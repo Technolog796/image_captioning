@@ -13,7 +13,7 @@
     "device": "cuda:0",
     "save_every": 1,
     "warmup_steps": 2000,
-    "wandb_key": "",
-    "wandb_project": "",
-    "wandb_name": ""
+    "wandb_key": "KEY",
+    "wandb_project": "PROJECT",
+    "wandb_name": "NAME"
 }
