@@ -2,6 +2,7 @@ import torch
 import torch.nn as nn
 from torch.nn import functional as nnf
 from torch.amp import autocast
+from torch import einsum
 
 from einops import rearrange
 
@@ -12,8 +13,6 @@ from transformers import GPT2LMHeadModel, AutoTokenizer
 from typing import Optional
 
 import math
-
-from src.config import Config
 
 def exists(val):
     return val is not None
@@ -251,17 +250,17 @@ def freeze(
 
 
 class ClipCaptionModel(nn.Module):
-    def __init__(self, prefix_length: int, prefix_size: int = 640, dist_loss=nn.MSELoss()):
+    def __init__(self, config, prefix_length: int, prefix_size: int = 640, dist_loss=nn.MSELoss()):
         super(ClipCaptionModel, self).__init__()
         self.prefix_length = prefix_length
-        self.clip_model, _, _ = open_clip.create_model_and_transforms(Config.encoder, pretrained="laion400m_e32")
-        self.tokenizer = AutoTokenizer.from_pretrained(Config.decoder)
-        self.gpt = GPT2LMHeadModel.from_pretrained(Config.decoder,
+        self.clip_model, _, _ = open_clip.create_model_and_transforms(config.encoder, pretrained="laion400m_e32")
+        self.tokenizer = AutoTokenizer.from_pretrained(config.decoder)
+        self.gpt = GPT2LMHeadModel.from_pretrained(config.decoder,
                                                    eos_token_id=self.tokenizer.pad_token_id)
         self.gpt_embedding_size = self.gpt.transformer.wte.weight.shape[1]
         self.clip_project = QFormer(prefix_size, self.gpt_embedding_size,
                                     self.gpt_embedding_size * prefix_length)
-        self.device = Config.device
+        self.device = config.device
         self.dist_loss = dist_loss
         self.mlp = MLP(self.gpt_embedding_size, self.gpt_embedding_size)
 
