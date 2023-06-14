@@ -180,7 +180,7 @@ def fit_model(args):
         os.makedirs(args.save_path)
     device = args.device
 
-    model = ClipCaptionModel(config, args.prefix_length)
+    model = ClipCaptionModel(args, args.prefix_length)
     model = model.to(args.device)
 
     wandb.watch(model, log_freq=10, log="gradients")
