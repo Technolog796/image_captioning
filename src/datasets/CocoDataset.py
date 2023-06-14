@@ -14,8 +14,6 @@ import sys
 
 import matplotlib.pyplot as plt
 
-from src.config import Config
-
 
 def read_image(path, size=(256, 256)):
     image = cv2.imread(path)
@@ -25,13 +23,15 @@ def read_image(path, size=(256, 256)):
 
 
 class CocoDataset(Dataset):
-    def __init__(self, image_path="data/coco_dataset/train2014",
+    def __init__(self, config, image_path="data/coco_dataset/train2014",
                  ann_path="data/coco_dataset/annotations/captions_train2014.json",
                  caption_path="data/coco_dataset/coco_train_trainslation.jsonl", data_type='train', coef_size=0.1,
-                 tokenizer_name=Config.decoder,
+                 tokenizer_name="",
                  prefix_length=20, normalize_prefix=False):
+        if not tokenizer_name:
+            tokenizer_name = config.decoder
         self.tokenizer = AutoTokenizer.from_pretrained(tokenizer_name)
-        _, _, self.preprocess = open_clip.create_model_and_transforms(Config.encoder, pretrained="laion400m_e32")
+        _, _, self.preprocess = open_clip.create_model_and_transforms(config.encoder, pretrained="laion400m_e32")
         self.prefix_length = prefix_length
         self.normalize_prefix = normalize_prefix
 
