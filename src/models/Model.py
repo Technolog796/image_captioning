@@ -13,6 +13,7 @@ from typing import Optional
 
 import math
 
+from src.config import Config
 
 def exists(val):
     return val is not None
@@ -174,8 +175,8 @@ class QFormerBlock(nn.Module):
             nn.Linear(text_emb_size * 2, output_size)
         )
 
-    @autocast()
-    def forward(self, img_emb: torch.Tensor, text_emb: torch.Tensor) -> tuple[Any, Any]:
+    @autocast("cuda")
+    def forward(self, img_emb: torch.Tensor, text_emb: torch.Tensor) -> torch.Tensor:
         text_emb = self.attn(text_emb)
         img_emb, text_emb = self.cross_attn(img_emb.reshape(-1, 1, img_emb.shape[1]), text_emb)
         text_emb = self.text_mlp(text_emb)
@@ -202,7 +203,7 @@ class QFormer(nn.Module):
             nn.Linear(img_emb_size + text_emb_size, output_size)
         )
 
-    @autocast()
+    @autocast("cuda")
     def forward(self, img_emb: torch.Tensor, text_emb: torch.Tensor) -> torch.Tensor:
         img_emb, text_emb = self.blocks(img_emb, text_emb)
         text_emb = text_emb.mean(axis=1)
@@ -220,7 +221,7 @@ class MLP(nn.Module):
             nn.Linear(input_shape * 2, output_shape)
         )
 
-    @autocast()
+    @autocast("cuda")
     def forward(self, x):
         return self.seq(x)
 
@@ -272,7 +273,7 @@ class ClipCaptionModel(nn.Module):
     def get_dummy_token(self, batch_size: int, device: torch.device) -> torch.Tensor:
         return torch.zeros(batch_size, self.prefix_length, dtype=torch.int64, device=device)
 
-    @autocast()
+    @autocast("cuda")
     def forward(self, query_tokens: torch.Tensor, query_mask: Optional[torch.Tensor],
                 answer_tokens: torch.Tensor, answer_mask: Optional[torch.Tensor], image):
         embedding_text = self.gpt.transformer.wte(query_tokens)
