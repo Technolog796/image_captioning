@@ -9,7 +9,12 @@
 ## Структура проекта
 <code>LLM_train</code> - ноутбуки для перевода англоязычного датасета и дальнейшего обучения на нём языковой модели-декодера.
 
-<code>datasets</code> - всё, что использовалалось для подготовки данных для модели
+<code>datasets</code> - всё, что использовалалось для подготовки данных для модели:
+    1. <code>clipscore_quality_test</code> - ручной тест качества метрики clipscore и переводчика.
+    2. <code>coco_translation</code> - перевод caption'ов COCO-2014.
+    3. <code>flan_translation</code> - перевод CoT части FLAN'a с английского на русский.
+    4. <code>load_data</code> - загрузка изображений из url'ов датасета Wiki и скачивание COCO-2014
+    5. <code>wikitext_normalization</code> - нормализация и предобработка caption'ов Wiki датасета и подсчет CLIP score его и COCO.
 
 <code>experiments</code> - все предыдущие эксперименты с моделью и её производными
 
