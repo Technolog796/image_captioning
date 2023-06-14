@@ -44,7 +44,6 @@ from torch.optim.lr_scheduler import CosineAnnealingLR
 import re
 import string
 
-from src.config import Config
 from src.datasets.CocoDataset import CocoDataset
 from src.models.Model import ClipCaptionModel
 
@@ -170,7 +169,7 @@ def evaluate(model, optimizer, scheduler, loss_func, loader, args):
         "rouge_score": np.mean([tensor for tensor in rg])
     })
 
-def fit_model(args=Config):
+def fit_model(args):
     wandb.config = {
         "learning_rate": args.learning_rate,
         "epochs": args.num_epochs,
@@ -181,7 +180,7 @@ def fit_model(args=Config):
         os.makedirs(args.save_path)
     device = args.device
 
-    model = ClipCaptionModel(args.prefix_length)
+    model = ClipCaptionModel(config, args.prefix_length)
     model = model.to(args.device)
 
     wandb.watch(model, log_freq=10, log="gradients")
@@ -216,15 +215,38 @@ def fit_model(args=Config):
         print(f"---------- Evaluate epoch {epoch} ---------")
         evaluate(model, optimizer, scheduler, loss_func, val_loader, args)
 
+
+class Config:
+    def __init__(self, encoder, decoder, batch_size, num_epochs, frozen_gpt, frozen_clip, learning_rate, save_path, prefix_length, only_prefix, prefix, device, save_every, warmup_steps, wandb_key, wandb_project, wandb_name):
+        self.encoder = encoder
+        self.decoder = decoder
+        self.batch_size = batch_size
+        self.num_epochs = num_epochs
+        self.frozen_gpt = frozen_gpt
+        self.frozen_clip = frozen_clip
+        self.learning_rate = learning_rate
+        self.save_path = save_path
+        self.prefix_length = prefix_length
+        self.only_prefix = only_prefix
+        self.prefix = prefix
+        self.device = device
+        self.save_every = save_every
+        self.warmup_steps = warmup_steps
+        self.wandb_key = wandb_key
+        self.wandb_project = wandb_project
+        self.wandb_name = wandb_name
+        
 if __name__ == "__main__":
-    train_dataset = CocoDataset(coef_size=0.5)
-    val_dataset = CocoDataset(image_path="data/coco_dataset/val2014",
+    with open("config.json", "r") as file:
+        config_json = json.loads(file.read())
+        config = Config(**config_json)
+        
+    train_dataset = CocoDataset(config, coef_size=0.5)
+    val_dataset = CocoDataset(config, image_path="data/coco_dataset/val2014",
                               ann_path="data/coco_dataset/annotations/captions_val2014.json",
                               caption_path="data/coco_dataset/coco_val_translation.jsonl", data_type='val', coef_size=0.05)
 
-    with open("wandb_config.json", "r") as file:
-        wandb_credetionals = json.loads(file.read())
-    wandb.login(relogin=True, key=wandb_credetionals["key"])
-    wandb.init(project=wandb_credetionals["project"], sync_tensorboard=True, name=wandb_credetionals["name"])
+    wandb.login(relogin=True, key=config.wandb_key)
+    wandb.init(project=config.wandb_project, sync_tensorboard=True, name=config.wandb_name)
 
-    fit_model()
+    fit_model(config)
