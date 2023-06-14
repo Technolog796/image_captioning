@@ -1,0 +1,19 @@
+{
+    "encoder": "ViT-B-16-plus-240",
+    "decoder": "ai-forever/rugpt3medium_based_on_gpt2",
+    "batch_size": 24,
+    "num_epochs": 100,
+    "frozen_gpt": 20,
+    "frozen_clip": 60,
+    "learning_rate": 2e-4,
+    "save_path": "model_saves/",
+    "prefix_length": 20,
+    "only_prefix": false,
+    "prefix": "prefix_small",
+    "device": "cuda:0",
+    "save_every": 1,
+    "warmup_steps": 2000,
+    "wandb_key": "",
+    "wandb_project": "",
+    "wandb_name": ""
+}
